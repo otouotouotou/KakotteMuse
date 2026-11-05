@@ -311,7 +311,7 @@ class CaptureActivity : Activity() {
         // 囲まずにタップしたら閉じる
         circleView.onTapClose = { finish() }
 
-        // 下部中央に2つのボタン: 左 = Muse (全体を「これ何？」)、
+        // 下部中央に2つのボタン: 左 = Muse (全体を「これ調べて」)、
         // 右 = Aあ (全体を「翻訳して」)
         fun iconButton(icon: Drawable?, onClick: () -> Unit): ImageButton {
             return ImageButton(this).apply {
@@ -620,7 +620,7 @@ class CaptureActivity : Activity() {
         private const val CROP_DISPLAY_NAME = "kakotte_crop.png"
 
         /** 画像に添える定型の質問 */
-        private const val DEFAULT_QUESTION = "これ何？"
+        private const val DEFAULT_QUESTION = "これ調べて"
 
         /** Aあボタン (翻訳) 用の質問 */
         private const val TRANSLATE_QUESTION = "翻訳して"
