@@ -16,6 +16,7 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
 import android.view.Gravity
+import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -65,6 +66,14 @@ class CaptureActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // ステータスバー/ナビバー領域までウィンドウを広げて描画する。
+        // これがないとバーが黒帯になり、撮影画像の上端もバーの下から始まってしまう。
+        // 撮影画像は画面全体なのでバー領域も画像で覆われ、バーのアイコンは
+        // システムが重ねる分と撮影に写った分がほぼ一致して自然に見える
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        )
         @Suppress("DEPRECATION")
         overridePendingTransition(0, 0)
         startCapture()

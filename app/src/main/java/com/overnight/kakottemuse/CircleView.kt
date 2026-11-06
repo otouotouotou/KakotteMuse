@@ -5,11 +5,13 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.DashPathEffect
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Shader
 import android.view.MotionEvent
 import android.view.View
 import kotlin.math.max
@@ -99,6 +101,44 @@ class CircleView(context: Context, val bitmap: Bitmap) : View(context) {
         pathEffect = DashPathEffect(floatArrayOf(dp(10f), dp(7f)), 0f)
     }
 
+    // レイヤーが出ていることを、アイコンやボタンに視線を移さなくても
+    // 画面の縁 (周辺視野) で分かるようにする青いグロー。
+    // 線で引くとディスプレイのカットアウト (パンチホールや角丸) で途切れてしまうため、
+    // 各端から画面の約10%の帯を、端の不透明度約67%から内側へ向けて消える
+    // グラデーションで塗る。表示だけのものなので、送信される切り抜き
+    // (元のビットマップ) には含まれない
+    private val framePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var frameShaders: List<Shader>? = null
+    private var frameShaderRect: RectF? = null
+
+    /** 画像の表示矩形に合わせた4端分のグラデーション。矩形が変わったときだけ作り直す */
+    private fun frameShadersFor(rect: RectF): List<Shader> {
+        val cachedRect = frameShaderRect
+        val cached = frameShaders
+        if (cached != null && cachedRect != null && cachedRect == rect) return cached
+        val colors = intArrayOf(
+            Color.argb(172, 64, 128, 234),   // 端: 不透明度 約67%
+            Color.argb(76, 64, 128, 234),
+            Color.argb(0, 64, 128, 234)      // 帯の内側の端: 透明
+        )
+        val stops = floatArrayOf(0f, 0.5f, 1f)
+        val bandW = rect.width() * 0.10f
+        val bandH = rect.height() * 0.10f
+        val built = listOf(
+            LinearGradient(rect.left, rect.top, rect.left, rect.top + bandH,
+                colors, stops, Shader.TileMode.CLAMP),
+            LinearGradient(rect.left, rect.bottom, rect.left, rect.bottom - bandH,
+                colors, stops, Shader.TileMode.CLAMP),
+            LinearGradient(rect.left, rect.top, rect.left + bandW, rect.top,
+                colors, stops, Shader.TileMode.CLAMP),
+            LinearGradient(rect.right, rect.top, rect.right - bandW, rect.top,
+                colors, stops, Shader.TileMode.CLAMP)
+        )
+        frameShaders = built
+        frameShaderRect = RectF(rect)
+        return built
+    }
+
     private fun dp(v: Float): Float = v * resources.displayMetrics.density
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -149,6 +189,24 @@ class CircleView(context: Context, val bitmap: Bitmap) : View(context) {
             canvas.drawRect(vr.right, vr.top, width.toFloat(), vr.bottom, dimPaint)
             canvas.drawRect(vr, boxEdgePaint)
             canvas.drawRect(vr, boxPaint)
+        }
+
+        // レイヤーの周囲に青いグローを出す (選択の暗転より上に出して常時見えるように)。
+        // 各端から約10%の帯を、端から内側へ消えるグラデーションで塗る
+        val imgRect = RectF(offX, offY, offX + bitmap.width * scale, offY + bitmap.height * scale)
+        if (imgRect.width() > 0 && imgRect.height() > 0) {
+            val bandW = imgRect.width() * 0.10f
+            val bandH = imgRect.height() * 0.10f
+            val shaders = frameShadersFor(imgRect)
+            framePaint.shader = shaders[0]
+            canvas.drawRect(imgRect.left, imgRect.top, imgRect.right, imgRect.top + bandH, framePaint)
+            framePaint.shader = shaders[1]
+            canvas.drawRect(imgRect.left, imgRect.bottom - bandH, imgRect.right, imgRect.bottom, framePaint)
+            framePaint.shader = shaders[2]
+            canvas.drawRect(imgRect.left, imgRect.top, imgRect.left + bandW, imgRect.bottom, framePaint)
+            framePaint.shader = shaders[3]
+            canvas.drawRect(imgRect.right - bandW, imgRect.top, imgRect.right, imgRect.bottom, framePaint)
+            framePaint.shader = null
         }
     }
 
